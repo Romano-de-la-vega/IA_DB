@@ -8,6 +8,7 @@ const testResult = document.getElementById('test-result');
 const queryForm = document.getElementById('query-form');
 const responseBox = document.getElementById('response');
 const answerSection = document.getElementById('answer');
+const directBox = document.getElementById('direct-sql');
 
 // Theme toggle
 (function initTheme() {
@@ -59,16 +60,21 @@ queryForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const question = document.getElementById('question').value.trim();
   if (!question) return;
+  const direct = directBox.checked;
   responseBox.textContent = 'Patientez...';
   answerSection.hidden = false;
   const res = await fetch('/api/query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question })
+    body: JSON.stringify({ question, direct })
   });
   if (res.ok) {
     const data = await res.json();
-    responseBox.textContent = data.answer || 'Pas de réponse';
+    if (direct) {
+      responseBox.textContent = JSON.stringify(data.rows || [], null, 2) || 'Aucun résultat';
+    } else {
+      responseBox.textContent = data.answer || 'Pas de réponse';
+    }
   } else {
     responseBox.textContent = 'Erreur: ' + (await res.text());
   }

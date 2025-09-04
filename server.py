@@ -81,12 +81,23 @@ async def test_config(cfg: DBSettings):
 
 class Question(BaseModel):
     question: str
+    direct: bool = False
 
 
 @app.post("/api/query")
 async def ask_question(payload: Question):
     if engine is None:
         raise HTTPException(status_code=400, detail="Base de données non configurée")
+
+    if payload.direct:
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text(payload.question))
+                rows = [dict(r) for r in result]
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Erreur SQL: {exc}")
+        return {"rows": rows}
+
     if OpenAI is None:
         raise HTTPException(status_code=500, detail="Bibliothèque OpenAI indisponible")
 

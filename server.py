@@ -93,7 +93,9 @@ async def ask_question(payload: Question):
         try:
             with engine.connect() as conn:
                 result = conn.execute(text(payload.question))
-                rows = [dict(r) for r in result]
+                # SQLAlchemy 2.0 row objects behave like tuples; use the
+                # ``_mapping`` attribute to access them as dictionaries.
+                rows = [dict(r._mapping) for r in result]
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Erreur SQL: {exc}")
         return {"rows": rows}
@@ -119,7 +121,7 @@ async def ask_question(payload: Question):
     try:
         with engine.connect() as conn:
             result = conn.execute(text(sql_query))
-            rows = [dict(r) for r in result]
+            rows = [dict(r._mapping) for r in result]
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Erreur SQL: {exc}")
 

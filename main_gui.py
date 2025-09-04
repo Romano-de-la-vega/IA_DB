@@ -15,5 +15,5 @@ if __name__ == "__main__":
     for _ in range(60):
         if is_up("127.0.0.1", 8000): break
         time.sleep(0.5)
-    webview.create_window("Transcripteur Whisper", "http://127.0.0.1:8000", width=1100, height=740)
+    webview.create_window("Assistant SQL", "http://127.0.0.1:8000", width=1100, height=740)
     webview.start()

@@ -3,12 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Transcripteur Whisper</title>
+    <title>Assistant SQL</title>
     <link rel="stylesheet" href="/static/style.css" />
     <link rel="icon" href="/static/icon.ico" type="image/x-icon">
 
     <style>
-      /* Thèmes via variables CSS (persistées avec data-theme sur <html>) */
       :root[data-theme="dark"] {
         --bg: #0f1115;
         --card: #151821;
@@ -56,16 +55,10 @@
       }
 
       .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-      .field { grid-column: span 6; display: flex; flex-direction: column; gap: 6px; }
-      .field.full { grid-column: 1 / -1; }
-      label { color: var(--muted); font-size: 14px; }
-      select, input[type="file"], input[type="password"] {
-        padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
-        background: transparent; color: var(--text);
-      }
-      small { color: var(--muted); }
-
+      .field { grid-column: span 12; display: flex; flex-direction: column; gap: 6px; }
       .actions { grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 8px; }
+      label { color: var(--muted); font-size: 14px; }
+      input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text); }
 
       button, .button {
         display: inline-flex; align-items: center; justify-content: center;
@@ -73,137 +66,88 @@
         background: var(--accent); color: var(--btn-fg); font-weight: 600; cursor: pointer; text-decoration: none;
       }
       button.ghost { background: transparent; border-color: var(--border); color: var(--text); }
-      button.danger { background: #e5484d; color: #fff; }
 
       .status { margin-top: 18px; }
-      .progress-wrap {
-        height: 10px; border-radius: 999px; background: transparent; border: 1px solid var(--border);
-        overflow: hidden;
-      }
-      .progress {
-        height: 100%; width: 0%;
-        background: linear-gradient(90deg, var(--accent), var(--accent-2));
-        transition: width .25s ease;
-      }
-      .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--muted); }
-      .badge {
-        display: inline-block; padding: 4px 8px; border-radius: 999px; background: transparent; border: 1px solid var(--border);
-        color: var(--text); font-size: 12px;
-      }
-
-      .files-list { margin-top: 14px; display: grid; gap: 10px; }
-      .file-row {
-        display: grid; gap: 8px; background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 10px;
-      }
-      .file-row .name { font-weight: 600; }
-      .file-row .row-progress { height: 6px; background: transparent; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
-      .file-row .row-progress > div { height:100%; width:0%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .25s ease; }
-      .file-row .state { font-size: 12px; color: var(--muted); }
-
       .logs {
         margin-top: 16px; max-height: 320px; overflow: auto;
         background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 12px;
         white-space: pre-wrap; word-break: break-word;
       }
 
-      footer.muted { color: var(--muted); text-align: center; margin-bottom: 24px; }
-
-      /* Bouton thème header */
       .header-row { display:flex; justify-content: space-between; align-items:center; gap: 12px; }
       #toggle-theme { min-width: 160px; }
+      #settings { position: fixed; top: 20px; right: 20px; width: 320px; z-index: 100; }
     </style>
   </head>
   <body>
     <header class="container">
       <div class="header-row">
         <div>
-          <h1>Transcripteur mp3 → txt via Whisper</h1>
-          <p class="subtitle">Lot de fichiers · Local ou API OpenAI</p>
+          <h1>Assistant SQL</h1>
+          <p class="subtitle">Interrogation en langage naturel</p>
         </div>
-        <button id="toggle-theme" type="button">🌙 Mode sombre</button>
+        <div style="display:flex; gap:8px;">
+          <button id="toggle-theme" type="button">🌙 Mode sombre</button>
+          <button id="toggle-settings" type="button">⚙️ Paramètres</button>
+        </div>
       </div>
     </header>
 
     <main class="container card">
-      <form id="form" class="grid">
+      <form id="query-form" class="grid">
         <div class="field">
-          <label for="mode">Mode de transcription</label>
-          <select id="mode" name="mode">
-            <option value="local">Local (CPU int8)</option>
-            <option value="api">API OpenAI</option>
-          </select>
+          <label for="question">Question</label>
+          <input id="question" name="question" type="text" placeholder="Quelle est la vente totale ?" />
         </div>
-
-        <div class="field" id="api-key-wrap" style="display:none">
-          <label for="api_key">Clé API OpenAI (facultatif si OPENAI_API_KEY est défini)</label>
-          <input id="api_key" name="api_key" type="password" placeholder="sk-..." />
-        </div>
-
-        <div class="field" id="output-type-wrap" style="display:none">
-          <label for="output_type">Format de sortie</label>
-          <select id="output_type" name="output_type">
-            <option value="resume">Résumé</option>
-            <option value="compte_rendu">Compte-rendu</option>
-            <option value="cahier_des_charges">Cahier des charges</option>
-            <option value="notes_de_cadrage">Notes de cadrage</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="model">Modèle</label>
-          <select id="model" name="model"></select>
-        </div>
-
-        <div class="field">
-          <label for="lang">Langue</label>
-          <select id="lang" name="lang"></select>
-        </div>
-
-        <div class="field full">
-          <label for="files">Fichiers audio</label>
-          <input id="files" name="files" type="file" multiple accept=".mp3,.wav,.m4a,.flac" />
-          <small>Formats : mp3, wav, m4a, flac</small>
-        </div>
-
         <div class="actions">
-          <button id="start" type="submit">Lancer la transcription</button>
-          <button id="reset" type="button" class="ghost">Réinitialiser</button>
+          <button id="ask" type="submit">Envoyer</button>
         </div>
       </form>
 
-      <section id="status" class="status" hidden>
-        <div class="progress-wrap"><div class="progress" id="progress" style="width:0%"></div></div>
-        <div class="meta">
-          <span id="job-id"></span>
-          <span id="job-state" class="badge">en attente</span>
-        </div>
-
-        <div id="files-list" class="files-list"></div>
-        <pre id="logs" class="logs"></pre>
-
-        <div id="downloads" class="actions" style="gap:.5rem;" hidden>
-
-          <button class="button ghost" id="btn-transcription" onclick="downloadTxt(currentJobId, 'transcription', true)">Télécharger la transcription (TXT)</button>
-          <button class="button ghost" id="btn-summary" style="display:none;" onclick="downloadTxt(currentJobId, 'summary', true)">Télécharger le résumé (TXT)</button>
-          <button class="button" id="btn-zip" onclick="downloadZip(currentJobId)">Télécharger en ZIP</button>
-        </div>
+      <section id="answer" class="status" hidden>
+        <pre id="result" class="logs"></pre>
       </section>
     </main>
 
-    <footer class="container muted">
-      Whisper + VAD Silero · API OpenAI optionnelle · Fait par Romain Cieslik
-    </footer>
-
-    <!-- Config envoyée par le serveur (JSON pur, sans commentaire) -->
-    <script id="whisper-config" type="application/json">
-      {{ {
-        "MODELS_LOCAL": models_local,
-        "MODELS_CLOUD": models_cloud,
-        "LANGS": langs,
-        "DEFAULT_MODEL_LOCAL": DEFAULT_MODEL_LOCAL,
-        "DEFAULT_LANG": DEFAULT_LANG
-      } | tojson }}
-    </script>
+    <div id="settings" class="card" style="display:none;">
+      <form id="settings-form" class="grid">
+        <div class="field">
+          <label for="driver">Driver</label>
+          <input id="driver" type="text" placeholder="postgresql" />
+        </div>
+        <div class="field">
+          <label for="host">Hôte</label>
+          <input id="host" type="text" placeholder="localhost" />
+        </div>
+        <div class="field">
+          <label for="port">Port</label>
+          <input id="port" type="number" placeholder="5432" />
+        </div>
+        <div class="field">
+          <label for="database">Base</label>
+          <input id="database" type="text" />
+        </div>
+        <div class="field">
+          <label for="username">Utilisateur</label>
+          <input id="username" type="text" />
+        </div>
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input id="password" type="password" />
+        </div>
+        <div class="field">
+          <label for="options">Options</label>
+          <input id="options" type="text" placeholder="sslmode=require" />
+        </div>
+        <div class="field">
+          <label for="api_key">Clé API OpenAI</label>
+          <input id="api_key" type="password" placeholder="sk-..." />
+        </div>
+        <div class="actions">
+          <button id="test-conn" type="button" class="ghost">Tester la connexion</button>
+        </div>
+      </form>
+    </div>
 
     <script src="/static/app.js" defer></script>
   </body>
